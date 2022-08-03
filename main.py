@@ -10,8 +10,8 @@ from selenium.webdriver.common.by import By
 # options
 
 options = webdriver.ChromeOptions()
-options.add_argument(
-    "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.134 Safari/537.36")
+# options.add_argument(
+#     "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.134 Safari/537.36")
 
 
 def get_source_html(url):
@@ -37,18 +37,27 @@ def get_source_html(url):
         urls = driver.find_elements(By.CLASS_NAME, "catalog-product__name.ui-link.ui-link_black")
         for items in urls:
             items.send_keys(Keys.CONTROL + Keys.ENTER)
-        print(type(driver.window_handles))
-        for url in range(len(driver.window_handles)-1):
-            list_reverse = list(reversed(driver.window_handles))
-            driver.switch_to.window(list_reverse[url])
+            driver.switch_to.window(driver.window_handles[1])
             name = driver.find_element(By.CLASS_NAME, "product-card-top__title")
             print(name.text)
-            if url == 0:
-                time.sleep(10)
-            else:
-                time.sleep(5)
+            time.sleep(4)
             price = driver.find_element(By.CLASS_NAME, "product-buy__price")
             print(price.text)
+            driver.close()
+            driver.switch_to.window(driver.window_handles[0])
+            time.sleep(1)
+
+        # for url in range(len(driver.window_handles)-1):
+        #     list_reverse = list(reversed(driver.window_handles))
+        #     driver.switch_to.window(list_reverse[url])
+        #     name = driver.find_element(By.CLASS_NAME, "product-card-top__title")
+        #     print(name.text)
+        #     if url == 0:
+        #         time.sleep(10)
+        #     else:
+        #         time.sleep(5)
+        #     price = driver.find_element(By.CLASS_NAME, "product-buy__price")
+        #     print(price.text)
 
         # name = driver.find_element(By.CLASS_NAME, "product-card-top__title")
         # print(name.text)
