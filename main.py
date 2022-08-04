@@ -1,23 +1,21 @@
-import requests
-from bs4 import BeautifulSoup
+import chromedriver_autoinstaller
 from selenium import webdriver
 import time
 import pickle
 
 from selenium.webdriver import Keys
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
 
+chromedriver_autoinstaller.install()
 # options
 options = webdriver.ChromeOptions()
 options.add_argument(
     "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36")
 options.add_argument("--disable-blink-features=AutomationControlled")
-service = Service(executable_path="D:\\Git\\DNS-price-tracking-telegram-bot\\chromedriver.exe")
 
 
 def get_source_html(url):
-    driver = webdriver.Chrome(service=service, options=options)
+    driver = webdriver.Chrome(options=options)
     # driver.maximize_window()
 
     try:
