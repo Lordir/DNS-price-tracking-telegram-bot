@@ -1,3 +1,4 @@
-chromedriver
-chromedriver_win32
+chromedriver.exe
+chromedriver_win32.zip
 cookies
+dns_table
