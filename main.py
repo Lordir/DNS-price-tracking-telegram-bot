@@ -1,24 +1,35 @@
-import chromedriver_autoinstaller
+# import chromedriver_autoinstaller
 from selenium import webdriver
 import time
 import pickle
+import asyncio
 
+from aiogram import Bot, Dispatcher, executor, types
 from selenium.webdriver import Keys
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from token_telegram import token, chat_id
 
-chromedriver_autoinstaller.install()
+# chromedriver_autoinstaller.install()
 # options
 options = webdriver.ChromeOptions()
 options.add_argument(
     "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36")
 options.add_argument("--disable-blink-features=AutomationControlled")
+service = Service(executable_path="D:\\Git\\DNS-price-tracking-telegram-bot\\chromedriver.exe")
+
+# Initialize bot and dispatcher
+bot = Bot(token=token)
+dp = Dispatcher(bot)
 
 
-def get_source_html(url):
-    driver = webdriver.Chrome(options=options)
-    # driver.maximize_window()
+async def get_data(url, comments):
+    driver = webdriver.Chrome(service=service, options=options)
+    driver.maximize_window()
 
     try:
+        if comments:
+            await bot.send_message(chat_id, "Пожалуйста, подождите...")
         driver.get(url=url)
         driver.implicitly_wait(5)
         # load cookies
@@ -37,6 +48,8 @@ def get_source_html(url):
             items.send_keys(Keys.CONTROL + Keys.ENTER)
             driver.switch_to.window(driver.window_handles[1])
             name = driver.find_element(By.CLASS_NAME, "product-card-top__title")
+            # time.sleep(3)
+            driver.implicitly_wait(20)
             while True:
                 if driver.find_element(By.CLASS_NAME, "product-buy__price"):
                     time.sleep(1)
@@ -57,9 +70,11 @@ def get_source_html(url):
                         price_int_split = price.text.split('₽')
                         price_int = int(price_int_split[0].replace(' ', ''))
                         if price_int < table_prices[index]:
-                            print(f"Цена на { name.text } уменьшилась, новая стоимость: { price.text }")
+                            await bot.send_message(chat_id,
+                                                   f"Цена на {name.text} уменьшилась, новая стоимость: {price.text}")
                         elif price_int > table_prices[index]:
-                            print(f"Цена на {name.text} увеличилась, новая стоимость: {price.text}")
+                            await bot.send_message(chat_id,
+                                                   f"Цена на {name.text} увеличилась, новая стоимость: {price.text}")
                     else:
                         with open("dns_table", "a", encoding="utf-8") as file:
                             file.write(name.text + ":" + price.text + '\n')
@@ -74,29 +89,31 @@ def get_source_html(url):
     except Exception as ex:
         print(ex)
     finally:
+        if comments:
+            await bot.send_message(chat_id, "Готово")
         driver.close()
         driver.quit()
 
 
-def test():
-    with open("dns_table", encoding="utf-8") as file:
-        list_position = [line for line in file]
-        table_names = []
-        table_prices = []
-        for text in list_position:
-            remove_last_text = text[:-1]
-            split_text = remove_last_text.split(':')
-            table_names.append(split_text[0])
-            price_split = split_text[1].split('₽')
-            table_prices.append(int(price_split[0].replace(' ', '')))
-        print(table_names)
-        print(table_prices)
+@dp.message_handler(commands=['start'])
+async def start(message: types.Message):
+    await message.reply(
+        f"Привет, {message.from_user.first_name}. Я отслеживаю изменение цен товаров из списка Избранное в DNS. ")
 
 
-def main():
-    get_source_html(url="https://www.dns-shop.ru/profile/wishlist/")
-    # test()
+@dp.message_handler(commands=['track'])
+async def track(message: types.Message):
+    loop.create_task(get_data(url="https://www.dns-shop.ru/profile/wishlist/", comments=True))
+
+
+async def main():
+    while True:
+        loop = asyncio.get_event_loop()
+        loop.create_task(get_data(url="https://www.dns-shop.ru/profile/wishlist/", comments=False))
+        await asyncio.sleep(3600)
 
 
 if __name__ == "__main__":
-    main()
+    loop = asyncio.get_event_loop()
+    loop.create_task(main())
+    executor.start_polling(dp, skip_updates=True)
