@@ -5,6 +5,8 @@ import pickle
 import asyncio
 
 from aiogram import Bot, Dispatcher, executor, types
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+# from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from selenium.webdriver import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -21,6 +23,13 @@ service = Service(executable_path="D:\\Git\\DNS-price-tracking-telegram-bot\\chr
 # Initialize bot and dispatcher
 bot = Bot(token=token)
 dp = Dispatcher(bot)
+
+# Keyboard
+button_track = KeyboardButton('track')
+keyboard_bot = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True).add(button_track)
+# Inline keyboard
+# button_track = InlineKeyboardButton(text="Проверить цены", callback_data="track")
+# keyboard_bot_inline = InlineKeyboardMarkup().add(button_track)
 
 
 async def get_data(url, comments):
@@ -41,7 +50,6 @@ async def get_data(url, comments):
         # pickle.dump(driver.get_cookies(), open("cookies", "wb"))
 
         # print(driver.page_source)
-        # password_input = driver.find_element(By.ID, "ir-o9898")
         driver.implicitly_wait(2)
         urls = driver.find_elements(By.CLASS_NAME, "catalog-product__name.ui-link.ui-link_black")
         for items in urls:
@@ -71,10 +79,25 @@ async def get_data(url, comments):
                         price_int = int(price_int_split[0].replace(' ', ''))
                         if price_int < table_prices[index]:
                             await bot.send_message(chat_id,
-                                                   f"Цена на {name.text} уменьшилась, новая стоимость: {price.text}")
+                                                   f"Цена на {name.text} уменьшилась, старая стоимость: {table_prices[index]}"
+                                                   f", новая стоимость: {price.text}")
+                            price_in_replace_str = list_position[index][:-1].split(':')
+                            replace_line = list_position[index].replace(f"{price_in_replace_str[1]}", f"{price.text}")
+                            list_position[index] = replace_line
+                            with open("dns_table", "w", encoding="utf-8") as file:
+                                for i in list_position:
+                                    file.write(i)
+
                         elif price_int > table_prices[index]:
                             await bot.send_message(chat_id,
-                                                   f"Цена на {name.text} увеличилась, новая стоимость: {price.text}")
+                                                   f"Цена на {name.text} увеличилась, старая стоимость: {table_prices[index]}"
+                                                   f", новая стоимость: {price.text}")
+                            price_in_replace_str = list_position[index][:-1].split(':')
+                            replace_line = list_position[index].replace(price_in_replace_str[1], price.text)
+                            list_position[index] = replace_line
+                            with open("dns_table", "w", encoding="utf-8") as file:
+                                for i in list_position:
+                                    file.write(i)
                     else:
                         with open("dns_table", "a", encoding="utf-8") as file:
                             file.write(name.text + ":" + price.text + '\n')
@@ -98,12 +121,24 @@ async def get_data(url, comments):
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     await message.reply(
-        f"Привет, {message.from_user.first_name}. Я отслеживаю изменение цен товаров из списка Избранное в DNS. ")
+        f"Привет, {message.from_user.first_name}. Я отслеживаю изменение цен товаров из списка Избранное в DNS.",
+        reply_markup=keyboard_bot)
 
 
-@dp.message_handler(commands=['track'])
-async def track(message: types.Message):
-    loop.create_task(get_data(url="https://www.dns-shop.ru/profile/wishlist/", comments=True))
+# @dp.message_handler(commands=['track'])
+# async def track(message: types.Message):
+#     loop.create_task(get_data(url="https://www.dns-shop.ru/profile/wishlist/", comments=True))
+
+@dp.message_handler()
+async def other(message: types.Message):
+    if message.text == 'track':
+        loop.create_task(get_data(url="https://www.dns-shop.ru/profile/wishlist/", comments=True))
+
+# handler for inline keyboard
+# @dp.callback_query_handler(text=["track"])
+# async def track(call: types.CallbackQuery):
+#     if call.data == "track":
+#         loop.create_task(get_data(url="https://www.dns-shop.ru/profile/wishlist/", comments=True))
 
 
 async def main():
